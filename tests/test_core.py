@@ -120,6 +120,41 @@ class ParserTests(unittest.TestCase):
 
 
 class ApiTests(unittest.IsolatedAsyncioTestCase):
+    def test_openapi_documents_success_and_errors(self):
+        schema = main.app.openapi()
+        profile = schema["paths"]["/v1/profile"]["post"]
+        health = schema["paths"]["/health"]["get"]
+
+        self.assertEqual(
+            set(profile["responses"]),
+            {"200", "404", "422", "429", "502", "503"},
+        )
+        self.assertEqual(set(health["responses"]), {"200", "401", "422"})
+        self.assertIn(
+            "examples", schema["components"]["schemas"]["ProfileRequest"]["properties"]["url"]
+        )
+        documented = str(schema)
+        for message in (
+            "Profile fetched.",
+            "invalid or missing X-API-Key",
+            "Profile was not found or is not visible to this session",
+            "body must contain a valid url",
+            "invalid LinkedIn profile URL",
+            "use an HTTPS linkedin.com profile URL",
+            "URL must match https://www.linkedin.com/in/<identifier>",
+            "LinkedIn rate-limited this session",
+            "LinkedIn could not be reached",
+            "LinkedIn returned HTTP 500",
+            "LinkedIn returned a non-JSON response",
+            "LinkedIn returned an unexpected response",
+            "LinkedIn returned no recognizable profile",
+            "LinkedIn returned an unsupported profile shape",
+            "LinkedIn session cookies are not configured",
+            "LinkedIn session is invalid, expired, or checkpointed",
+            "No healthy LinkedIn sessions are available",
+        ):
+            self.assertIn(message, documented)
+
     async def test_health_requires_its_api_key(self):
         result = {
             "total_accounts": 2,
